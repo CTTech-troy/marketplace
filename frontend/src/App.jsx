@@ -1,39 +1,19 @@
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Shop from "./pages/Shop";
-import Messages from "./pages/Messages";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import Navigation from "./components/Navigation";
+import React, { useState } from "react";
+import Login from "./components/login";
+import Signup from "./components/signup";
+import Dashboard from "./components/Dashboard";
 
-const queryClient = new QueryClient();
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [showSignup, setShowSignup] = useState(false);
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <div className="min-h-screen bg-background">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/settings" element={<Settings />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Navigation />
-        </div>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+  if (!user) {
+    return showSignup ? (
+      <Signup onSignup={(u) => setUser(u)} onSwitch={() => setShowSignup(false)} />
+    ) : (
+      <Login onLogin={(u) => setUser(u)} onSwitch={() => setShowSignup(true)} />
+    );
+  }
 
-export default App;
+  return <Dashboard user={user} />;
+}
