@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../firebase";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { app } from "../../firebase"; // your firebase.js should export initialized app
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function Login({ onLogin, onSwitch }) {
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,31 +37,13 @@ export default function Login({ onLogin, onSwitch }) {
     if (googleLoading) return;
     setGoogleLoading(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const idToken = await result.user.getIdToken();
-      console.log("Received ID Token:", idToken.slice ? idToken.slice(0, 40) + "..." : idToken);
-
-      const res = await fetch(`${API}/api/google-auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        // if user exists, backend may return exists flag -> prompt login
-        if (data.exists) {
-          alert(data.message || "Account exists. Please login.");
-          return;
-        }
-        throw new Error(data.error || "Google auth failed");
-      }
-
-      onLogin(data.user);
-      alert(data.message || "Signed in with Google");
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      // call your backend if needed to create user record or verify token
+      onLogin && onLogin({ _id: user.uid, email: user.email, username: user.displayName, profile: { profilePic: user.photoURL } });
     } catch (err) {
-      console.error("Google login failed", err);
-      alert("Google login failed: " + (err.message || err));
+      console.error('Google sign-in error:', err);
+      alert('Google sign-in failed: ' + (err.message || err));
     } finally {
       setGoogleLoading(false);
     }

@@ -16,7 +16,7 @@ router.post("/", async (req, res) => {
 
   try {
     // Verify token with Firebase Auth
-    const decoded = await auth.verifyIdToken(idToken);
+    const decoded = await admin.auth().verifyIdToken(idToken);
     console.log("Decoded Token:", decoded);
 
     const uid = decoded.uid;

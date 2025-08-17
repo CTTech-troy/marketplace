@@ -25,6 +25,7 @@ export default function Dashboard({ user, products: initialProducts = [], onSend
   useEffect(() => {
     let mounted = true;
     const uid = (user && (user._id || user.uid)) || null;
+    // console.log("Dashboard mounted with user:", user, "uid:", uid);
 
     // if no uid or full profile already present, skip fetch
     if (!uid) return;

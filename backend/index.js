@@ -1,13 +1,13 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
 const signupRoutes = require("./api/signup.js");
 const loginRoutes = require("./api/login.js");
 const googleAuthRoutes = require("./api/google-auth.js");
 const usersRoutes = require("./api/users.js");
 const { db, serviceAccount } = require("./firebaseAdmin.js");
 
-dotenv.config();
+// dotenv.config();
 const app = express();
 
 app.use(cors());
