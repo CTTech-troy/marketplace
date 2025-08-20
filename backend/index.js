@@ -1,23 +1,22 @@
-require('dotenv').config();
-const express = require("express");
+require('dotenv').config(); // must be first
+const express = require('express');
 const cors = require("cors");
-const signupRoutes = require("./api/signup.js");
-const loginRoutes = require("./api/login.js");
-const googleAuthRoutes = require("./api/google-auth.js");
-const usersRoutes = require("./api/users.js");
-const { db, serviceAccount } = require("./firebaseAdmin.js");
+const path = require('path');
 
-// dotenv.config();
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use("/api/signup", signupRoutes);
-app.use("/api/login", loginRoutes);
-app.use("/api/google-auth", googleAuthRoutes);
-app.use("/api/users", usersRoutes);
+// Mount api routes
+app.use("/api/signup", require("./api/signup.js"));
+app.use("/api/login", require("./api/login.js"));
+app.use("/api/google-auth", require("./api/google-auth.js"));
+app.use("/api/users", require("./api/users.js"));
+app.use('/api/verify', require('./api/verify'));
+app.use('/api/confirm', require('./api/confirm'));
+app.use('/api/dashboard', require('./api/dashboard'));
 
 // Health endpoint to check Firestore connectivity
 app.get("/api/_health", async (req, res) => {
@@ -85,9 +84,17 @@ app.use((req, res) => {
     </div>
   `);
 });
+// 🔹 Test Firestore connection once at startup
+(async () => {
+  try {
+    const testDoc = db.collection("test").doc("ping");
+    await testDoc.set({ alive: true, timestamp: new Date() });
+    console.log("✅ Firestore write success");
+  } catch (err) {
+    console.error("❌ Firestore test failed:", err.message);
+  }
+})();
 
-
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

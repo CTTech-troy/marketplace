@@ -1,7 +1,26 @@
 const express = require("express");
+const router = express.Router();
+const authenticate = require("../middleware/auth");
 const { db } = require("../firebaseAdmin.js");
 
-const router = express.Router();
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const snap = await db.collection("users").doc(uid).get();
+    if (!snap.exists) return res.status(404).json({ error: "User not found" });
+
+    const user = snap.data();
+    if (!user || user.isVerified !== true) {
+      return res.status(403).json({ error: "Account not verified. Complete 2FA to access dashboard." });
+    }
+
+    // return dashboard payload
+    return res.json({ success: true, user });
+  } catch (err) {
+    console.error("dashboard error:", err && (err.stack || err));
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // POST /api/users/fetch
 // body: { ids: ["uid1","uid2", ...] }

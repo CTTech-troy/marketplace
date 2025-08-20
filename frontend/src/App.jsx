@@ -1,19 +1,23 @@
-import React, { useState } from "react";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "./components/login";
 import Signup from "./components/signup";
+import Verify from "./components/verify";
 import Dashboard from "./components/Dashboard";
+import MessageList from "./components/MessageList";
+import ChatPage from "./components/ChatPage";
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [showSignup, setShowSignup] = useState(false);
-
-  if (!user) {
-    return showSignup ? (
-      <Signup onSignup={(u) => setUser(u)} onSwitch={() => setShowSignup(false)} />
-    ) : (
-      <Login onLogin={(u) => setUser(u)} onSwitch={() => setShowSignup(true)} />
-    );
-  }
-
-  return <Dashboard user={user} />;
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/verify" element={<Verify />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/messages" element={<MessageList />} />
+      <Route path="/chat/:id" element={<ChatPage />} />
+    </Routes>
+  );
 }

@@ -1,49 +1,64 @@
 import React, { useState } from "react";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { app } from "../../firebase"; // your firebase.js should export initialized app
+import { useNavigate } from "react-router-dom";
+import { auth } from "../../firebase.js";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API = import.meta.env.FIREBASE_API_URL || "http://localhost:5000";
 
 export default function Login({ onLogin, onSwitch }) {
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
-  const [usernameOrEmail, setUsernameOrEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usernameOrEmail, password }),
+        body: JSON.stringify({ identifier: identifier.trim(), password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login failed");
-      onLogin(data.user);
-      alert("Login successful");
+
+      const body = await res.json();
+      if (!res.ok) {
+        alert(body?.error || "Login failed");
+        return;
+      }
+
+      if (body.idToken) sessionStorage.setItem("idToken", body.idToken);
+      if (body.user) sessionStorage.setItem("user", JSON.stringify(body.user));
+
+      if (onLogin) onLogin(body.user || null);
+      navigate("/dashboard");
     } catch (err) {
-      console.error("Login failed", err);
-      alert("Login failed: " + (err.message || err));
+      console.error("Login error:", err);
+      alert("Login failed. See console for details.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleGoogleLogin = async () => {
-    if (googleLoading) return;
     setGoogleLoading(true);
     try {
+      const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      // call your backend if needed to create user record or verify token
-      onLogin && onLogin({ _id: user.uid, email: user.email, username: user.displayName, profile: { profilePic: user.photoURL } });
+      const idToken = await user.getIdToken();
+
+      // store token and basic user info
+      sessionStorage.setItem("idToken", idToken);
+      sessionStorage.setItem("user", JSON.stringify({ email: user.email, uid: user.uid }));
+
+      // navigate straight to dashboard (signup flow handles /verify)
+      if (onLogin) onLogin({ email: user.email, uid: user.uid });
+      navigate("/dashboard");
     } catch (err) {
-      console.error('Google sign-in error:', err);
-      alert('Google sign-in failed: ' + (err.message || err));
+      console.error("Google login failed:", err);
+      alert(err?.message || "Google login failed");
     } finally {
       setGoogleLoading(false);
     }
@@ -55,9 +70,9 @@ export default function Login({ onLogin, onSwitch }) {
         <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
-            value={usernameOrEmail}
-            onChange={(e) => setUsernameOrEmail(e.target.value)}
-            placeholder="Username or email"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="Email or phone"
             required
             className="w-full px-3 py-2 border rounded"
           />
@@ -69,7 +84,7 @@ export default function Login({ onLogin, onSwitch }) {
             required
             className="w-full px-3 py-2 border rounded"
           />
-          <button disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">
+          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded">
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
@@ -81,6 +96,7 @@ export default function Login({ onLogin, onSwitch }) {
         </div>
 
         <button
+          type="button"
           onClick={handleGoogleLogin}
           disabled={googleLoading}
           className="w-full flex items-center justify-center border py-2 rounded hover:bg-gray-50"
@@ -91,7 +107,14 @@ export default function Login({ onLogin, onSwitch }) {
 
         <p className="mt-4 text-center text-sm">
           Don't have an account?{" "}
-          <button onClick={onSwitch} className="text-blue-600">
+          <button
+            type="button"
+            onClick={() => {
+              if (onSwitch) return onSwitch();
+              navigate("/signup");
+            }}
+            className="text-blue-600"
+          >
             Sign Up
           </button>
         </p>
