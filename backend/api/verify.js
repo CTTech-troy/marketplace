@@ -2,6 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
+const fs = require("fs");
+
+// Load the HTML template once
+const templatePath = path.join(__dirname, "templates", "2fa.html");
+let htmlTemplate = fs.readFileSync(templatePath, "utf-8");
 
 // load env from backend .env so verify.js can read SMTP and other vars
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
@@ -14,7 +19,7 @@ function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
 }
 
-async function sendEmail(to, subject, text) {
+async function sendEmail(to, subject, htmlContent) {
   // read env values (loaded above)
   const SMTP_HOST = process.env.SMTP_HOST;
   const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
@@ -34,7 +39,7 @@ async function sendEmail(to, subject, text) {
 
     try {
       await transporter.verify();
-      const info = await transporter.sendMail({ from: SMTP_FROM, to, subject, text });
+      const info = await transporter.sendMail({ from: SMTP_FROM, to, subject, html: htmlContent });
       console.log(`[verify] Email sent to ${to}. messageId=${info.messageId}`);
       return { ok: true, provider: "smtp", info };
     } catch (err) {
@@ -51,7 +56,7 @@ async function sendEmail(to, subject, text) {
         auth: { user: SMTP_USER, pass: SMTP_PASS },
       });
       await transporter.verify();
-      const info = await transporter.sendMail({ from: SMTP_FROM, to, subject, text });
+      const info = await transporter.sendMail({ from: SMTP_FROM, to, subject, html: htmlContent });
       console.log(`[verify] Email sent via Gmail service to ${to}. messageId=${info.messageId}`);
       return { ok: true, provider: "gmail", info };
     } catch (err) {
@@ -69,7 +74,7 @@ async function sendEmail(to, subject, text) {
       secure: testAccount.smtp.secure,
       auth: { user: testAccount.user, pass: testAccount.pass },
     });
-    const info = await transporter.sendMail({ from: testAccount.user, to, subject, text });
+    const info = await transporter.sendMail({ from: testAccount.user, to, subject, html: htmlContent });
     const previewUrl = nodemailer.getTestMessageUrl(info);
     console.log(`[verify] Sent using Ethereal. Preview URL: ${previewUrl}`);
     return { ok: true, provider: "ethereal", info, previewUrl };
@@ -96,10 +101,15 @@ router.post("/", authenticate, async (req, res) => {
       { merge: true }
     );
 
+    // Replace placeholders with dynamic content AFTER code is generated
+    const finalHtml = htmlTemplate
+      .replace("{{CODE}}", code)
+      .replace("{{EXPIRY}}", "10 minutes");
+
     const emailResult = await sendEmail(
       email,
       "Your 2FA verification code",
-      `Your verification code is: ${code}. Expires in 10 minutes.`
+      finalHtml
     );
 
     if (emailResult.ok) {

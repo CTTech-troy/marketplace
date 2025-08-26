@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../../firebase"; // adjust path if different
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from "../../firebase.js";
+// changed: use Firebase auth create/update functions
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
-const API = import.meta.env.FIREBASE_API_URL || "http://localhost:5000";
+// changed: ensure API constant and clearer default
+const API = import.meta.env.VITE_FIREBASE_API_URL || "http://localhost:5000";
 
 export default function SignUp({ onSwitch }) {
   const [username, setUsername] = useState("");
@@ -12,40 +13,72 @@ export default function SignUp({ onSwitch }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // ✅ Handle normal signup (no Google)
   async function handleSubmit(e) {
     e.preventDefault();
+    setError(null);
     setLoading(true);
+
+    // short-circuit if required fields missing
+    if (!username.trim() || !email.trim() || !password) {
+      setError("Please fill in all fields");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // create Firebase user client-side
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      // 1) Create Firebase auth user
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const user = cred.user;
 
-      // get ID token to call backend verify endpoint
-      const idToken = await userCred.user.getIdToken();
+      // 2) Set display name (username)
+      try {
+        await updateProfile(user, { displayName: username.trim() });
+      } catch (updErr) {
+        console.warn("updateProfile failed:", updErr);
+      }
 
-      // ask backend to generate & send 2FA code
-      await fetch(`${API}/api/verify`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({})
-      });
+      // 3) Inform backend (optional)
+      try {
+        const idToken = await user.getIdToken(true);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
-      // store pending data so Verify component can pre-fill / sign-in
-      sessionStorage.setItem(
-        "pendingVerify",
-        JSON.stringify({ email, password })
-      );
+        const res = await fetch(`${API}/api/signup`, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username: username.trim(), email: email.trim() }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
 
-      // navigate to verify page (user must input code before dashboard)
-      navigate("/verify");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.warn("Backend signup returned non-OK:", body);
+        } else {
+          console.log("Backend signup succeeded");
+        }
+      } catch (backendErr) {
+        console.warn("Backend signup failed (non-fatal):", backendErr);
+      }
+
+      // navigate to verify page so user can enter verification code
+      // prefer route with uid so verify page can look up user or pre-fill email
+      navigate(`/verify/${user.uid}`);
     } catch (err) {
       console.error("Signup request error:", err);
-      alert(err?.message || "Signup failed");
+      const msg =
+        (err?.code && err.code.replace("auth/", "").replace(/-/g, " ")) ||
+        err.message ||
+        "Signup failed";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -111,6 +144,7 @@ export default function SignUp({ onSwitch }) {
             required
             className="w-full px-3 py-2 border rounded"
           />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             disabled={loading}
             className="w-full bg-green-600 text-white py-2 rounded"

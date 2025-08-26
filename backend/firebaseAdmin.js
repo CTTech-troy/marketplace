@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const path = require('path');
 
 // load your service account JSON (adjust filename if different)
-const serviceAccount = require(path.join(__dirname, process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'marketplace-bf706-firebase-adminsdk-fbsvc-622dcca302.json'));
+const serviceAccount = require(path.join(__dirname, 'marketplace-bf706-firebase-adminsdk-fbsvc-622dcca302.json'));
 
 if (!admin.apps.length) {
   admin.initializeApp({

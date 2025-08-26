@@ -1,22 +1,46 @@
 require('dotenv').config(); // must be first
-const express = require('express');
+const express = require("express");
 const cors = require("cors");
-const path = require('path');
+const path = require("path");
+const signupRoutes = require("./api/signup.js");
+const loginRoutes = require("./api/login.js");
+const googleAuthRoutes = require("./api/google-auth.js");
+const usersRoutes = require("./api/users.js");
+const { db, serviceAccount, auth: adminAuth } = require("./firebaseAdmin.js");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// parse JSON and form bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// enable CORS for dev and production origins (adjust as needed)
+app.use(cors());
 
-// Mount api routes
-app.use("/api/signup", require("./api/signup.js"));
-app.use("/api/login", require("./api/login.js"));
-app.use("/api/google-auth", require("./api/google-auth.js"));
-app.use("/api/users", require("./api/users.js"));
-app.use('/api/verify', require('./api/verify'));
-app.use('/api/confirm', require('./api/confirm'));
-app.use('/api/dashboard', require('./api/dashboard'));
+// mount API routers (ensure filenames match your /api files)
+const signupRouter = require("./api/signup");
+const loginRouter = require("./api/login");
+const verifyRouter = require("./api/verify");
+const usersRouter = require("./api/users");
+const dashboardRouter = require("./api/dashboard");
+const chatRouter = require("./api/chat");
+const productsRouter = require("./api/products");
+const commentsRouter = require("./api/comments");
+const confirmRouter = require("./api/confirm");
+const userProfileRouter = require("./api/userprofile"); // import user profile router
+// add other routers as needed...
+
+app.use("/api/signup", signupRouter);
+app.use("/api/login", loginRouter);
+app.use("/api/verify", verifyRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/chats", require("./api/chat.js"));
+app.use("/api/products", productsRouter);
+app.use("/api/comments", commentsRouter);
+app.use("/api/confirm", confirmRouter);
+app.use ("/api/userprofile", userProfileRouter)
+// notifications API
+app.use("/api/notifications", require("./api/notifications.js"));
 
 // Health endpoint to check Firestore connectivity
 app.get("/api/_health", async (req, res) => {
@@ -95,6 +119,79 @@ app.use((req, res) => {
   }
 })();
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const http = require("http");
+const server = http.createServer(app);
+
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
+
+// simple presence map uid -> Set(socketId)
+const presence = new Map();
+
+function setUserOnline(uid, socketId) {
+  const set = presence.get(uid) || new Set();
+  set.add(socketId);
+  presence.set(uid, set);
+  io.emit("presence:update", { uid, online: true });
+}
+
+function setUserOffline(uid, socketId) {
+  const set = presence.get(uid);
+  if (!set) return;
+  set.delete(socketId);
+  if (set.size === 0) {
+    presence.delete(uid);
+    io.emit("presence:update", { uid, online: false });
+  } else {
+    presence.set(uid, set);
+  }
+}
+
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
+  socket.on("authenticate", async ({ token }) => {
+    try {
+      if (!token) return;
+      const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+      socket.data.uid = uid;
+      socket.join(`user:${uid}`);
+      setUserOnline(uid, socket.id);
+      socket.emit("presence:initial", { uid, online: true });
+    } catch (err) {
+      console.warn("Socket auth failed:", err);
+      socket.emit("authenticate:error", { error: String(err) });
+    }
+  });
+
+  socket.on("join:chat", ({ chatId }) => {
+    if (!chatId) return;
+    socket.join(`chat:${chatId}`);
+  });
+
+  socket.on("leave:chat", ({ chatId }) => {
+    if (!chatId) return;
+    socket.leave(`chat:${chatId}`);
+  });
+
+  socket.on("typing", ({ chatId, typing }) => {
+    if (!chatId) return;
+    socket.to(`chat:${chatId}`).emit("typing", { chatId, uid: socket.data.uid, typing });
+  });
+
+  socket.on("disconnect", () => {
+    const uid = socket.data.uid;
+    if (uid) setUserOffline(uid, socket.id);
+  });
+});
+
+// expose io to routes
+app.set("io", io);
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Backend server running on port ${PORT}`);
 });
