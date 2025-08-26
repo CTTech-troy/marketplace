@@ -1,46 +1,19 @@
-const fs = require("fs");
-const path = require("path");
-const admin = require("firebase-admin");
+// backend/firebaseAdmin.js
+require("dotenv").config();
+const admin = require('firebase-admin');
+const path = require('path');
 
-let serviceAccount;
-const keyPath = path.join(__dirname, "serviceAccountKey.json");
+// load your service account JSON (adjust filename if different)
+const serviceAccount = require(path.join(__dirname, 'marketplace-bf706-firebase-adminsdk-fbsvc-622dcca302.json'));
 
-// load service account: prefer env var (JSON string) then local file
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  try {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } catch (err) {
-    console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT env var:", err.message);
-    serviceAccount = null;
-  }
-} else if (fs.existsSync(keyPath)) {
-  serviceAccount = require(keyPath);
-} else {
-  console.error("No serviceAccountKey.json found and FIREBASE_SERVICE_ACCOUNT not set.");
-  serviceAccount = null;
-}
-
-// determine projectId and databaseURL
-const projectId = process.env.FIREBASE_PROJECT_ID || (serviceAccount && serviceAccount.project_id);
-const databaseURL = process.env.FIREBASE_DATABASE_URL || (serviceAccount && serviceAccount.database_url) || undefined;
-
-if (!serviceAccount) {
-  console.error("Firebase service account is missing. Firestore calls will fail until this is fixed.");
-}
-
-try {
+if (!admin.apps.length) {
   admin.initializeApp({
-    credential: serviceAccount ? admin.credential.cert(serviceAccount) : admin.credential.applicationDefault(),
-    projectId: projectId,
-    ...(databaseURL ? { databaseURL } : {}),
+    credential: admin.credential.cert(serviceAccount),
   });
-  console.log("Firebase Admin initialized. projectId =", projectId);
-} catch (err) {
-  console.error("Failed to initialize Firebase Admin SDK:", err && err.stack ? err.stack : err);
-  throw err;
 }
 
+// export auth + db + admin
 const auth = admin.auth();
 const db = admin.firestore();
 
-module.exports = { admin, auth, db, serviceAccount };
+module.exports = { admin, auth, db };

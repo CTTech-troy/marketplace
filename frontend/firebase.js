@@ -1,27 +1,26 @@
-// firebaseClient.js
+// firebase.js (for Vite)
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // <-- add Firestore
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDcJiJ88E9h14cHMmROlZQKhui6ifSVbI0",
-  authDomain: "cttech-c3806.firebaseapp.com",
-  databaseURL: "https://cttech-c3806-default-rtdb.firebaseio.com",
-  projectId: "cttech-c3806",
-  storageBucket: "cttech-c3806.firebasestorage.app",
-  messagingSenderId: "510121902173",
-  appId: "1:510121902173:web:3dd4b71fe0386ab16f8db4",
-  measurementId: "G-MBC0E5Q96G"
-};
+// prefer VITE_ (exposed by Vite) but allow older names as fallback
+const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.FIREBASE_API_KEY || import.meta.env.REACT_APP_FIREBASE_API_KEY || "";
+const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || import.meta.env.FIREBASE_AUTH_DOMAIN || import.meta.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "";
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.FIREBASE_PROJECT_ID || import.meta.env.REACT_APP_FIREBASE_PROJECT_ID || "";
+const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || import.meta.env.FIREBASE_STORAGE_BUCKET || import.meta.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "";
+const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.FIREBASE_MESSAGING_SENDER_ID || import.meta.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "";
+const appId = import.meta.env.VITE_FIREBASE_APP_ID || import.meta.env.FIREBASE_APP_ID || import.meta.env.REACT_APP_FIREBASE_APP_ID || "";
 
-const app = initializeApp(firebaseConfig);
+const config = { apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId };
 
-export const auth = getAuth(app);
-export const db = getFirestore(app); 
-export const googleProvider = new GoogleAuthProvider();
-
-export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const idToken = await result.user.getIdToken();
-  return { idToken, user: result.user };
+if (!config.apiKey || !config.projectId) {
+  console.error("[firebase] Missing VITE_FIREBASE_* env vars. Check frontend/.env");
+  throw new Error("Missing Firebase Vite env vars (VITE_FIREBASE_API_KEY / VITE_FIREBASE_PROJECT_ID)");
 }
+
+const app = initializeApp(config);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+export { app, auth, db, googleProvider };
