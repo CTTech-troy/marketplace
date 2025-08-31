@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +7,30 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node modules and build output
+node_modules/
+dist/
+dist-ssr/
 *.local
+
+# Environment files
+.env
+backend/.env
+
+# Sensitive local data
+backend/src/ctstore.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Optional: OS-specific files
+Thumbs.db
+ehthumbs.db
