@@ -2,20 +2,19 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../../firebase.js";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import SocialLoginButtons from "./SocialLoginButtons"; 
 
-const API = import.meta.env.VITE_FIREBASE_API_URL || "http://localhost:5000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function Login({ onLogin, onToggleForm  }) {
-  const [identifier, setIdentifier] = useState("");
+export default function Login({ onLogin, onToggleForm }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
 
-  // 🔹 handle email/password login
+  // 🔹 handle email/password login - FIXED: Correct field name
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
@@ -23,22 +22,22 @@ export default function Login({ onLogin, onToggleForm  }) {
     setSuccess("");
 
     try {
-      const res = await fetch(`${API}/api/login`, {
+      const res = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: identifier.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      const body = await res.json();
+      const data = await res.json();
       if (!res.ok) {
-        setError(body?.error || "Login failed");
+        setError(data?.error || "Login failed");
         return;
       }
 
-      if (body.idToken) sessionStorage.setItem("idToken", body.idToken);
-      if (body.user) sessionStorage.setItem("user", JSON.stringify(body.user));
+      if (data.idToken) sessionStorage.setItem("idToken", data.idToken);
+      if (data.user) sessionStorage.setItem("user", JSON.stringify(data.user));
 
-      if (onLogin) onLogin(body.user || null);
+      if (onLogin) onLogin(data.user || null);
 
       setSuccess("Login successful! Redirecting...");
       setTimeout(() => navigate("/dashboard"), 1000);
@@ -50,7 +49,7 @@ export default function Login({ onLogin, onToggleForm  }) {
     }
   }
 
-  // 🔹 handle Google login
+  // 🔹 handle Google login - FIXED: Correct API endpoint
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError("");
@@ -62,13 +61,30 @@ export default function Login({ onLogin, onToggleForm  }) {
       const user = result.user;
       const idToken = await user.getIdToken();
 
-      sessionStorage.setItem("idToken", idToken);
+      // Call our backend to verify the Google token
+      const res = await fetch(`${API}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Google login failed");
+      }
+
+      sessionStorage.setItem("idToken", data.idToken || idToken);
       sessionStorage.setItem(
         "user",
-        JSON.stringify({ email: user.email, uid: user.uid })
+        JSON.stringify({ email: user.email, uid: user.uid, firstName: user.displayName?.split(' ')[0], lastName: user.displayName?.split(' ').slice(1).join(' ') })
       );
 
-      if (onLogin) onLogin({ email: user.email, uid: user.uid });
+      if (onLogin) onLogin({ 
+        email: user.email, 
+        uid: user.uid,
+        firstName: user.displayName?.split(' ')[0],
+        lastName: user.displayName?.split(' ').slice(1).join(' ')
+      });
 
       setSuccess("Google login successful! Redirecting...");
       setTimeout(() => navigate("/dashboard"), 1000);
@@ -111,8 +127,8 @@ export default function Login({ onLogin, onToggleForm  }) {
           <input
             id="email"
             type="email"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-200"
             placeholder="Email Address"
             required
@@ -156,7 +172,7 @@ export default function Login({ onLogin, onToggleForm  }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors"
+          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
@@ -188,7 +204,7 @@ export default function Login({ onLogin, onToggleForm  }) {
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading}
-          className="w-full flex items-center justify-center gap-3 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-center gap-3 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           <span>{googleLoading ? "Signing in..." : "Sign in with Google"}</span>
         </button>

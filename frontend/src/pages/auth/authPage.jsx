@@ -1,8 +1,8 @@
+// frontend/src/pages/auth/authPage.jsx
 import React, { useState } from 'react'
 import AuthLayout from '../../components/auth/AuthLayout'
 import LoginForm from '../../components/auth/LoginForm'
 import CreateAccountForm from '../../components/auth/CreateAccountForm'
-
 export default function App() {
   const [activeForm, setActiveForm] = useState('login')
 

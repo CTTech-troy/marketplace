@@ -72,7 +72,7 @@ const SocialLoginButtons = () => {
     <div className="">
       <button className="flex items-center justify-center p-3hover:bg-gray-50 transition-colors">
         <GoogleIcon />
-      </button>
+      </button> 
     </div>
   );
 };

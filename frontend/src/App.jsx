@@ -1,9 +1,8 @@
 // src/App.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "./components/Login";
 import Auth from "./pages/auth/authPage"
-import Signup from "./components/Signup";
+// import Signup from "./components/Signup";
 import Verify from "./components/Verify";
 import Dashboard from "./components/Dashboard";
 import ChatLayout from "./pages/ChatLayout";   
@@ -14,7 +13,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<Auth />} />
-      <Route path="/signup" element={<Signup />} />
+      {/* <Route path="/signup" element={<Signup />} /> */}
       <Route path="/verify/:token" element={<Verify />} />
       <Route path="/verify" element={<Verify />} />
       <Route path="/dashboard" element={<Dashboard />} />

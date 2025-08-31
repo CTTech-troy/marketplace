@@ -1,5 +1,5 @@
+// frontend/src/components/auth/AuthLayout.jsx
 import React from "react";
-
 const AuthLayout = ({ children, leftSideContent }) => {
   return (
     <div className="flex w-full h-screen overflow-hidden">
