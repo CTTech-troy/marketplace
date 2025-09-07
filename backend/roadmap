@@ -1,0 +1,66 @@
+/alltrade-backend
+│
+├── /src
+│   ├── /config
+│   │    ├── firebase.js
+│   │    ├── monnify.js
+│   │    └── db.js
+│   │
+│   ├── /controllers
+│   │    ├── authController.js
+│   │    ├── productController.js
+│   │    ├── orderController.js
+│   │    ├── walletController.js
+│   │    ├── reviewController.js
+│   │    └── userController.js
+│   │
+│   ├── /middlewares
+│   │    ├── authMiddleware.js
+│   │    └── errorHandler.js
+│   │
+│   ├── /models
+│   │    ├── User.js
+│   │    ├── Product.js
+│   │    ├── Order.js
+│   │    ├── WalletTransaction.js
+│   │    ├── Review.js
+│   │    └── Notification.js
+│   │ 
+│   ├── /routes
+│   │    ├── authRoutes.js
+│   │    ├── productRoutes.js
+│   │    ├── orderRoutes.js
+│   │    ├── walletRoutes.js
+│   │    ├── reviewRoutes.js
+│   │    └── userRoutes.js
+│   │
+│   ├── /services
+│   │    ├── monnifyService.js
+│   │    └── firebaseService.js
+│   │
+│   ├── /utils
+│   │    └── helpers.js
+│   │
+│   ├── app.js
+│   └── server.js
+│
+├── /docker
+│   └── Dockerfile
+│
+├── .env
+├── .gitignore
+├── package.json
+└── README.md
+
+
+
+
+| Endpoint                    | Method | Description                         |
+| --------------------------- | ------ | ----------------------------------- |
+| `/api/auth/signup`          | POST   | Email/password signup with OTP      |
+| `/api/auth/verify-otp`      | POST   | Verify OTP from email               |
+| `/api/auth/resend-otp`      | POST   | Resend OTP                          |
+| `/api/auth/forgot-password` | POST   | Sends password reset link via email |
+| `/api/auth/reset-password`  | POST   | Resets password using token         |
+| `/api/auth/login`           | POST   | Email/password login                |
+| `/api/auth/google`          | POST   | Google signup/login                 |

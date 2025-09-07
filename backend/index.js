@@ -1,100 +1,158 @@
-require('dotenv').config(); // must be first
-const express = require('express');
-const cors = require("cors");
-const path = require('path');
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import authRoutes from "./src/routes/authRoutes.js";
+import userRoutes from "./src/routes/userRoutes.js";
+import walletRoutes from './src/routes/walletRoutes.js';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ✅ CORS Setup - allow local dev ports + production URL from .env
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  process.env.FRONTEND_URL // for production deployment
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`❌ CORS blocked request from: ${origin}`);
+      callback(new Error("CORS not allowed for this origin: " + origin));
+    }
+  },
+  credentials: true, // required if you use cookies / auth tokens
+}));
+
 app.use(express.json());
 
-// Mount api routes
-app.use("/api/signup", require("./api/signup.js"));
-app.use("/api/login", require("./api/login.js"));
-app.use("/api/google-auth", require("./api/google-auth.js"));
-app.use("/api/users", require("./api/users.js"));
-app.use('/api/verify', require('./api/verify'));
-app.use('/api/confirm', require('./api/confirm'));
-app.use('/api/dashboard', require('./api/dashboard'));
+// ==================== ROUTES ====================
 
-// Health endpoint to check Firestore connectivity
-app.get("/api/_health", async (req, res) => {
-  try {
-    // try a simple read that should always work (non-existent doc retrieval)
-    await db.doc("health/check").get();
-    res.json({ status: "ok", firestore: true });
-  } catch (err) {
-    console.error("Health check Firestore error:", err);
-    res.status(500).json({ status: "error", firestore: false, details: err.message });
-  }
-});
+// Auth API
+app.use("/api/auth", authRoutes);
 
-// Debug endpoint — do not expose in production
-app.get('/api/_debug', async (req, res) => {
-  try {
-    // Show the loaded service account project_id (masked)
-    const projectId = serviceAccount && serviceAccount.project_id ? serviceAccount.project_id : null;
-    // Try a simple Firestore op
-    let firestoreOk = true;
-    let firestoreError = null;
-    try {
-      await db.doc('debug/ping').get();
-    } catch (err) {
-      firestoreOk = false;
-      firestoreError = err.message || String(err);
-    }
+// User API
+app.use("/api/users", userRoutes);
 
-    res.json({
-      projectId,
-      firestoreOk,
-      firestoreError
-    });
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
-});
+// Wallet API
+app.use("/api/wallet", walletRoutes);
 
+// ==================== ROOT ROUTE ====================
 app.get("/", (req, res) => {
   res.send(`
-    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;font-size:2rem;">
-      🟢 Backend Server Running
-      <div style="text-align:center;margin-top:20px;">
-        Visit <a href="/api/signup">/api/signup</a> to test signup
-      </div>
-      <div style="text-align:center;margin-top:10px;">
-        Visit <a href="/api/login">/api/login</a> to test login
-      </div>
-      <div style="text-align:center;margin-top:10px;">
-        Visit <a href="/api/google_auth">/api/google_auth</a> for Google authentication
-      </div>
-      <div style="text-align:center;margin-top:10px;">
-        Visit <a href="/api/dashboard.js">/api/dashboard.js</a> to fetch user details
-      </div>
+    <div class="min-h-screen bg-gray-50 flex flex-col items-center justify-start py-10 font-sans">
+      <h1 class="text-4xl font-bold text-gray-800 mb-8">API Documentation</h1>
+
+      <!-- POST API Section -->
+      <section class="w-full max-w-5xl bg-white shadow-lg rounded-lg p-6 mb-10">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700 border-b pb-2">POST API Endpoints</h2>
+        <table class="w-full border border-gray-300 border-collapse text-gray-700">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-2 text-left">Endpoint</th>
+              <th class="border border-gray-300 px-4 py-2 text-left">Method</th>
+              <th class="border border-gray-300 px-4 py-2 text-left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/signup</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Email/password signup with OTP</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/verify-otp</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Verify OTP from email</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/resend-otp</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Resend OTP</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/forgot-password</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Sends password reset link via email</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/reset-password</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Resets password using token</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/login</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Email/password login</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/auth/google</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Google signup/login</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet/fund</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Initialize wallet funding via Monnify</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet/debit</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Debit wallet for a purchase</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- GET API Section -->
+      <section class="w-full max-w-5xl bg-white shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700 border-b pb-2">GET API Endpoints</h2>
+        <table class="w-full border border-gray-300 border-collapse text-gray-700">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border border-gray-300 px-4 py-2 text-left">Endpoint</th>
+              <th class="border border-gray-300 px-4 py-2 text-left">Method</th>
+              <th class="border border-gray-300 px-4 py-2 text-left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/users</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-green-600">GET</td>
+              <td class="border border-gray-300 px-4 py-2">Get all users</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/users/:id</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-green-600">GET</td>
+              <td class="border border-gray-300 px-4 py-2">Get user by ID</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-green-600">GET</td>
+              <td class="border border-gray-300 px-4 py-2">Get wallet balance</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet/transactions</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-green-600">GET</td>
+              <td class="border border-gray-300 px-4 py-2">Get wallet transaction history</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </div>
   `);
 });
 
-// Catch-all 404 handler with details
-app.use((req, res) => {
-  res.status(404).send(`
-    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;font-size:2rem;color:red;">
-      ❌ Error: Page not found<br>
-      <span style="font-size:1rem;">Reason: No route matches [${req.method}] ${req.originalUrl}</span>
-    </div>
-  `);
+// ==================== ERROR HANDLER ====================
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.message);
+  res.status(500).json({ error: "Internal Server Error" });
 });
-// 🔹 Test Firestore connection once at startup
-(async () => {
-  try {
-    const testDoc = db.collection("test").doc("ping");
-    await testDoc.set({ alive: true, timestamp: new Date() });
-    console.log("✅ Firestore write success");
-  } catch (err) {
-    console.error("❌ Firestore test failed:", err.message);
-  }
-})();
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ==================== START SERVER ====================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
