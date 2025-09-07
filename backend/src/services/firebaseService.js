@@ -10,7 +10,7 @@ export async function sendPushNotification(fcmToken, payload) {
   }
   try {
     const response = await messaging.sendToDevice(fcmToken, payload, {
-      priority: "high",
+      priority: "high",   
       timeToLive: 60 * 60, // 1 hour
     });
     console.log("✅ Push notification sent:", response.successCount, "success");

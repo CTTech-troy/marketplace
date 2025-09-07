@@ -1,1 +1,37 @@
 backend/ctstore.json
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules and build output
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment files
+.env
+backend/.env
+
+# Sensitive local data
+backend/src/ctstore.json
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Optional: OS-specific files
+Thumbs.db
+ehthumbs.db

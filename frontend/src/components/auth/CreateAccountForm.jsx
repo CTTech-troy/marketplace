@@ -1,10 +1,7 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from "../../../firebase";
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
+import { auth as firebaseAuth, googleProvider } from "../../../firebase";
+import { FcGoogle } from "react-icons/fc"; 
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -16,111 +13,60 @@ export default function SignUp({ onToggleForm }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
-  // ✅ Normal Signup - FIXED: Correct API endpoint and payload
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+    if (!firstName || !lastName || !email || !password) {
       setError("Please fill in all fields");
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
     setLoading(true);
-
     try {
-      // Call backend signup endpoint directly
-      const response = await fetch(`${API}/auth/signup`, {
+      const resp = await fetch(`${API}/api/auth/signup`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          firstName: firstName.trim(), 
-          lastName: lastName.trim(), 
-          email: email.trim(), 
-          password 
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, password }),
       });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Signup failed");
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Signup failed");
-      }
-
-      // If using email verification, redirect to verification page
-      if (data.verificationLink) {
-        // In a real app, you would send the verification email
-        // For demo, we'll show the link in console and redirect to login
-        console.log("Verification link:", data.verificationLink);
-        alert("Signup successful! Please check your email for verification. Redirecting to login...");
-        onToggleForm();
-      } else {
-        alert("Signup successful! Redirecting to login...");
-        onToggleForm();
-      }
-    } catch (error) {
-      console.error("❌ Signup error:", error);
-      setError(error.message || "Something went wrong. Please try again.");
+      // Redirect to verification page
+      window.location.href = `/verification?email=${encodeURIComponent(data.email)}`;
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ Google Signup - FIXED: Correct API endpoint
   async function handleGoogleSignup() {
     setGoogleLoading(true);
     setError(null);
-    
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const idToken = await user.getIdToken();
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+      const idToken = await result.user.getIdToken(true);
 
-      const response = await fetch(`${API}/auth/google`, {
+      const resp = await fetch(`${API}/api/auth/google`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Google signup failed");
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Google signup failed");
-      }
-
-      // Store tokens and user data
-      if (data.idToken) {
-        sessionStorage.setItem("idToken", data.idToken);
-        sessionStorage.setItem("user", JSON.stringify({
-          uid: data.uid,
-          email: data.email
-        }));
-      }
-
-      alert("Google signup successful! Redirecting to dashboard...");
-      navigate("/dashboard");
+      alert("Google signup successful!");
+      onToggleForm?.();
     } catch (err) {
-      console.error("Google signup error:", err);
+      console.error(err);
       setError(err.message || "Google signup failed");
     } finally {
       setGoogleLoading(false);
     }
   }
-
-
-
   return (
     <div className="bg-gray-100 p-8 rounded-3xl transition-all duration-500">
       <div className="mb-8">
@@ -236,7 +182,7 @@ export default function SignUp({ onToggleForm }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+          className="w-full bg-black  text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
         >
           {loading ? "Creating Account..." : "Create Account"}
         </button>
@@ -256,6 +202,7 @@ export default function SignUp({ onToggleForm }) {
           disabled={googleLoading}
           className="w-full flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
+           <FcGoogle className="w-5 h-5" />
           <span>{googleLoading ? "Signing up..." : "Sign up with Google"}</span>
         </button>
         <p className="text-center text-sm text-gray-600 mt-2 mb-5">

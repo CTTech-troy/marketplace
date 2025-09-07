@@ -1,7 +1,13 @@
 // src/config/monnify.js
-module.exports = {
-  apiKey: process.env.MONNIFY_API_KEY,
-  apiSecret: process.env.MONNIFY_API_SECRET,
-  contractCode: process.env.MONNIFY_CONTRACT_CODE,
-  baseUrl: 'https://sandbox.monnify.com/api/v1' // Use production URL in prod
+
+// Use environment variables for security
+const monnifyConfig = {
+  apiKey: process.env.MONNIFY_API_KEY,        
+  apiSecret: process.env.MONNIFY_API_SECRET,  
+  contractCode: process.env.MONNIFY_CONTRACT_CODE, 
+  baseUrl: process.env.NODE_ENV === "production"
+    ? "https://api.monnify.com/api/v1"       
+    : "https://sandbox.monnify.com/api/v1"   
 };
+
+export default monnifyConfig;

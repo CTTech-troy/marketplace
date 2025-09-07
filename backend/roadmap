@@ -51,3 +51,16 @@
 ├── .gitignore
 ├── package.json
 └── README.md
+
+
+
+
+| Endpoint                    | Method | Description                         |
+| --------------------------- | ------ | ----------------------------------- |
+| `/api/auth/signup`          | POST   | Email/password signup with OTP      |
+| `/api/auth/verify-otp`      | POST   | Verify OTP from email               |
+| `/api/auth/resend-otp`      | POST   | Resend OTP                          |
+| `/api/auth/forgot-password` | POST   | Sends password reset link via email |
+| `/api/auth/reset-password`  | POST   | Resets password using token         |
+| `/api/auth/login`           | POST   | Email/password login                |
+| `/api/auth/google`          | POST   | Google signup/login                 |

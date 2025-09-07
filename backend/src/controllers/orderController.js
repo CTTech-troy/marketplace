@@ -1,13 +1,14 @@
 // src/controllers/orderController.js
-const Order = require('../models/Order');
-const WalletTransaction = require('../models/WalletTransaction');
-const monnifyService = require('../services/monnifyService');
-const User = require('../models/User');
+import admin from 'firebase-admin';
+import Order from '../models/Order.js';
+import Product from '../models/Product.js';
+import WalletTransaction from '../models/WalletTransaction.js';
+import monnifyService from '../services/monnifyService.js';
 
 const DELIVERY_FEE = 500; // ₦500 delivery fee
 
 // POST /orders/checkout
-exports.checkout = async (req, res) => {
+export const checkout = async (req, res) => {
   try {
     const { productId, deliveryFeeIncluded } = req.body;
     const buyerId = req.user.uid; // Firebase UID
@@ -48,7 +49,7 @@ exports.checkout = async (req, res) => {
 };
 
 // POST /orders/confirm
-exports.confirmOrder = async (req, res) => {
+export const confirmOrder = async (req, res) => {
   try {
     const { paymentReference, status } = req.body;
     // Validate payment status from Monnify webhook or frontend confirmation
@@ -102,3 +103,46 @@ exports.confirmOrder = async (req, res) => {
     return res.status(500).json({ error: 'Order confirmation failed' });
   }
 };
+
+export const createOrder = async (req, res) => {
+  try {
+    const { userId, productId, amount } = req.body;
+
+    const order = await Order.create({ userId, productId, amount, status: 'pending' });
+    return res.status(201).json({ order });
+  } catch (error) {
+    console.error('Create Order Error:', error);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+};
+
+export const listOrders = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const query = userId ? { userId } : {};
+    const orders = await Order.find(query);
+    return res.status(200).json({ orders });
+  } catch (error) {
+    console.error('List Orders Error:', error);
+    return res.status(500).json({ error: 'Failed to list orders' });
+  }
+};
+
+export const getOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    return res.status(200).json({ order });
+  } catch (error) {
+    console.error('Get Order Error:', error);
+    return res.status(500).json({ error: 'Failed to get order' });
+  }
+};
+
+// Add other functions here using `export const`

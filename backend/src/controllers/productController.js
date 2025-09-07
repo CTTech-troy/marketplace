@@ -1,52 +1,82 @@
-const Product = require('../models/Product');
+import admin from 'firebase-admin';
 
-exports.createProduct = async (req, res) => {
+const db = admin.firestore();
+const productsCol = db.collection('products');
+
+const toDoc = (snap) => {
+  if (!snap || !snap.exists) return null;
+  return { id: snap.id, ...snap.data() };
+};
+
+export const listProducts = async (req, res) => {
   try {
-    const seller = req.user.uid;
-    const { title, description, price, media, location, category, tags, isAnonymous } = req.body;
-
-    const product = new Product({
-      sellerId: req.user._id,
-      title,
-      description,
-      price,
-      media,
-      location,
-      category,
-      tags,
-      isAnonymous: isAnonymous || false
-    });
-
-    await product.save();
-    res.status(201).json(product);
-  } catch (error) {
-    console.error('Create product error:', error);
-    res.status(500).json({ error: 'Failed to create product' });
+    const snaps = await productsCol.get();
+    const products = snaps.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return res.json({ products });
+  } catch (err) {
+    console.error('listProducts', err);
+    return res.status(500).json({ error: 'Failed to list products' });
   }
 };
 
-exports.getProducts = async (req, res) => {
+export const getProduct = async (req, res) => {
   try {
-    const { tags, location, category } = req.query;
-    const filter = { isVisible: true };
-
-    if (tags) filter.tags = { $in: tags.split(',') };
-    if (location) filter.location = location;
-    if (category) filter.category = category;
-
-    const products = await Product.find(filter).sort({ createdAt: -1 });
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch products' });
+    const { id } = req.params;
+    const snap = await productsCol.doc(id).get();
+    const product = toDoc(snap);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    return res.json({ product });
+  } catch (err) {
+    console.error('getProduct', err);
+    return res.status(500).json({ error: 'Failed to get product' });
   }
 };
 
-exports.getProductById = async (req, res) => {
+export const createProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-    if (!product || !product.isVisible) return res.status(404).json({ error: 'Product not found' });
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch product' });
+    const data = req.body || {};
+    data.createdAt = admin.firestore.Timestamp.now();
+    data.updatedAt = data.createdAt;
+    // if you want firebaseUID as id, use req.user?.uid or data.id
+    const docRef = await productsCol.add(data);
+    const snap = await docRef.get();
+    return res.status(201).json({ product: toDoc(snap) });
+  } catch (err) {
+    console.error('createProduct', err);
+    return res.status(500).json({ error: 'Failed to create product' });
   }
+};
+
+export const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body || {};
+    updates.updatedAt = admin.firestore.Timestamp.now();
+    await productsCol.doc(id).set(updates, { merge: true });
+    const snap = await productsCol.doc(id).get();
+    return res.json({ product: toDoc(snap) });
+  } catch (err) {
+    console.error('updateProduct', err);
+    return res.status(500).json({ error: 'Failed to update product' });
+  }
+};
+
+export const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await productsCol.doc(id).delete();
+    return res.json({ message: 'Product deleted' });
+  } catch (err) {
+    console.error('deleteProduct', err);
+    return res.status(500).json({ error: 'Failed to delete product' });
+  }
+};
+
+// default export for route imports expecting "default"
+export default {
+  listProducts,
+  getProduct,
+  createProduct,
+  updateProduct,
+  deleteProduct
 };

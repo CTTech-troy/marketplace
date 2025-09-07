@@ -1,18 +1,19 @@
 import admin from "firebase-admin";
-import { createRequire } from "module";
-import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 
-dotenv.config();
-const require = createRequire(import.meta.url);
+// Use absolute path based on current file location
+const serviceAccountPath = path.resolve("./CTTech.json");
 
-const serviceAccount = require("../../ctstore.json");
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_DB_URL,
-  });
+if (!fs.existsSync(serviceAccountPath)) {
+  throw new Error(`Firebase service account JSON not found at ${serviceAccountPath}`);
 }
+
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf-8"));
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const auth = admin.auth();
 const firestore = admin.firestore();

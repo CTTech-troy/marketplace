@@ -1,12 +1,33 @@
-// src/models/WalletTransaction.js
-const mongoose = require('mongoose');
+import { admin } from "../config/firebase.js";
+const db = admin.firestore();
+const walletTxCol = db.collection("walletTransactions");
 
-const walletTransactionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User ', required: true },
-  type: { type: String, enum: ['credit', 'debit'], required: true },
-  amount: { type: Number, required: true },
-  reason: { type: String, enum: ['sale', 'purchase', 'withdrawal'], required: true },
-  timestamp: { type: Date, default: Date.now }
-});
+const toDoc = (snap) => {
+  if (!snap || !snap.exists) return null;
+  return { id: snap.id, ...snap.data() };
+};
 
-module.exports = mongoose.model('WalletTransaction', walletTransactionSchema);
+const create = async (data) => {
+  const now = admin.firestore.Timestamp.now();
+  const payload = {
+    userId: data.userId,
+    type: data.type || "credit",
+    amount: data.amount || 0,
+    reason: data.reason || "",
+    status: data.status || "pending",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const docRef = await walletTxCol.add(payload);
+  const snap = await docRef.get();
+  return toDoc(snap);
+};
+
+const find = async (filter = {}) => {
+  let q = walletTxCol;
+  if (filter.userId) q = q.where("userId", "==", filter.userId);
+  const snaps = await q.orderBy("createdAt", "desc").get();
+  return snaps.docs.map(toDoc);
+};
+
+export default { create, find };

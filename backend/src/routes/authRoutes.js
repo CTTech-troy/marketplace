@@ -1,29 +1,37 @@
 import express from "express";
 import {
-  googleAuth,
   signup,
+  verifyOtp,
+  resendOtp,
+  forgotPassword,
+  resetPassword,
   login,
-  sendVerificationCode,
-  verifyCode,
-  getProfile,
-  updateProfile,
-  session
+  googleAuth,
 } from "../controllers/authController.js";
-import verifyFirebaseToken from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/google", googleAuth);
-router.post("/signup", signup);
-router.post("/login", login);
-router.post("/send-code", sendVerificationCode);
-router.post("/verify-code", verifyCode);
-router.get("/profile", verifyFirebaseToken, getProfile);
-router.put("/profile", verifyFirebaseToken, updateProfile);
-router.post("/session", session);
+// ----------------------- Auth Routes -----------------------
 
-router.get("/me", verifyFirebaseToken, (req, res) => {
-  res.json({ user: req.user });
-});
+// Signup with email/password
+router.post("/signup", signup);
+
+// Verify OTP
+router.post("/verify-otp", verifyOtp);
+
+// Resend OTP
+router.post("/resend-otp", resendOtp);
+
+// Forgot password → sends reset link
+router.post("/forgot-password", forgotPassword);
+
+// Reset password → use token from email
+router.post("/reset-password", resetPassword);
+
+// Login with email/password
+router.post("/login", login);
+
+// Google signup/login
+router.post("/google", googleAuth);
 
 export default router;

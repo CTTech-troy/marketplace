@@ -1,12 +1,14 @@
-const express = require('express');
+// backend/src/routes/reviewRoutes.js
+import express from "express";
+import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
+import * as reviewController from "../controllers/reviewController.js";
+
 const router = express.Router();
-const reviewController = require('../controllers/reviewController');
-const verifyFirebaseToken = require('../middlewares/authMiddleware');
 
-// Leave a review (auth required)
-router.post('/', verifyFirebaseToken, reviewController.leaveReview);
+router.post("/", verifyFirebaseToken, reviewController.createReview);
+router.get("/", reviewController.getAllReviews);
+router.get("/:id", reviewController.getReviewById);
+router.put("/:id", verifyFirebaseToken, reviewController.updateReview);
+router.delete("/:id", verifyFirebaseToken, reviewController.deleteReview);
 
-// Get reviews for a product
-router.get('/:productId', reviewController.getReviewsByProduct);
-
-module.exports = router;
+export default router;

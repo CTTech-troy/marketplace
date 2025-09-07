@@ -1,12 +1,17 @@
-const express = require('express');
+import express from "express";
+import * as walletController from "../controllers/walletController.js";
+import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
+
 const router = express.Router();
-const walletController = require('../controllers/walletController');
-const verifyFirebaseToken = require('../middlewares/authMiddleware');
 
-// Get wallet balance
-router.get('/', verifyFirebaseToken, walletController.getWalletBalance);
+// Wallet endpoints
+router.get("/", verifyFirebaseToken, walletController.getWalletBalance);
+router.post("/credit", verifyFirebaseToken, walletController.creditWallet);
+router.post("/debit", verifyFirebaseToken, walletController.debitWallet);
+router.get("/transactions", verifyFirebaseToken, walletController.listTransactions);
 
-// Withdraw funds from wallet
-router.post('/withdraw', verifyFirebaseToken, walletController.withdrawFunds);
+// Monnify
+router.post("/fund", verifyFirebaseToken, walletController.initializeWalletFunding);
+router.post("/verify", verifyFirebaseToken, walletController.verifyMonnifyPayment);
 
-module.exports = router;
+export default router;

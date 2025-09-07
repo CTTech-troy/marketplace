@@ -98,4 +98,4 @@ exports.onNewChatMessage = functions.firestore
       console.error('❌ Error in onNewChatMessage:', error);
       return null;
     }
-  });
+  }); 
