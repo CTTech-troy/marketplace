@@ -1,142 +1,84 @@
 // controllers/userController.js
-import User from "../models/users.js";
+import { firestore, admin } from "../config/firebase.js";
+import { createUserWithProfile } from "../models/users.js";
 
-/**
- * Get all users
- */
-export const getAllUsers = async (req, res) => {
+const usersCol = firestore.collection("users");
+const profilesCol = firestore.collection("profiles");
+
+// GET all users
+export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.findAll();
-    if (!users || users.length === 0) {
-      return res.status(404).json({ success: false, message: "No users found" });
-    }
-
-    const formattedUsers = users.map((u) => ({
-      ...u,
-      isOnline: u.isOnline || false,
-    }));
-
-    res.status(200).json({ success: true, count: formattedUsers.length, data: formattedUsers });
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    const snapshot = await usersCol.get();
+    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(users);
+  } catch (err) {
+    next(err);
   }
 };
 
-/**
- * Get user by ID
- */
-export const getUserById = async (req, res) => {
+// GET user by ID
+export const getUserById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const user = await User.findById(id);
-
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    res.status(200).json({ success: true, data: { ...user, isOnline: user.isOnline || false } });
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    const doc = await usersCol.doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ error: "User not found" });
+    res.json({ id: doc.id, ...doc.data() });
+  } catch (err) {
+    next(err);
   }
 };
 
-/**
- * Toggle user status (Disable / Enable)
- */
-export const disableUser = async (req, res) => {
+// GET logged-in user's profile (requires auth)
+export const getUserProfile = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body; // must be "Disabled" or "Active"
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-    if (!["Disabled", "Active"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status value" });
-    }
+    const profileDoc = await profilesCol.doc(uid).get();
+    if (!profileDoc.exists) return res.status(404).json({ error: "Profile not found" });
 
-    const result = await User.updateOne({ firebaseUID: id }, { $set: { status } });
-    if (result.matchedCount === 0) return res.status(404).json({ success: false, message: "User not found" });
-
-    const updatedUser = await User.findById(id);
-    res.status(200).json({
-      success: true,
-      message: `User status updated to ${status}`,
-      data: { ...updatedUser, isOnline: updatedUser.isOnline || false },
-    });
-  } catch (error) {
-    console.error("Error updating user status:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.json({ id: profileDoc.id, ...profileDoc.data() });
+  } catch (err) {
+    next(err);
   }
 };
 
-/**
- * Delete user
- */
-export const deleteUser = async (req, res) => {
+// PATCH to disable/enable a user
+export const disableUser = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const result = await User.deleteOne({ firebaseUID: id });
-
-    if (result.deletedCount === 0) return res.status(404).json({ success: false, message: "User not found" });
-
-    res.status(200).json({ success: true, message: "User deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    await usersCol.doc(req.params.id).update({ disabled: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.json({ success: true, message: "User disabled" });
+  } catch (err) {
+    next(err);
   }
 };
 
-/**
- * Optional: get logged-in user's profile
- */
-export const getUserProfile = async (req, res) => {
+// DELETE user
+export const deleteUser = async (req, res, next) => {
   try {
-    const userId = req.user?.id; // requires auth middleware
-    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    res.status(200).json({ success: true, data: { ...user, isOnline: user.isOnline || false } });
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    await usersCol.doc(req.params.id).delete();
+    await profilesCol.doc(req.params.id).delete();
+    res.json({ success: true, message: "User deleted" });
+  } catch (err) {
+    next(err);
   }
 };
 
-/**
- * Optional: Set user online/offline
- */
-export const setUserOnlineStatus = async (userId, isOnline) => {
+// Ensure user has all documents (called on login/signup)
+export const ensureUserInitialized = async (req, res, next) => {
   try {
-    await User.updateOne({ firebaseUID: userId }, { $set: { isOnline } });
-  } catch (error) {
-    console.error(`Error updating online status for user ${userId}:`, error);
-  }
-};
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-/**
- * Add follower
- */
-export const addFollower = async (req, res) => {
-  try {
-    const { userId, followerId } = req.body;
-    await User.addFollower(userId, followerId);
-    res.status(200).json({ success: true, message: "Follower added successfully" });
-  } catch (error) {
-    console.error("Error adding follower:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
+    const authUser = await admin.auth().getUser(uid);
+    const result = await createUserWithProfile(
+      uid,
+      authUser.email ?? null,
+      authUser.displayName ?? "",
+      authUser.photoURL ?? null
+    );
 
-/**
- * Remove follower
- */
-export const removeFollower = async (req, res) => {
-  try {
-    const { userId, followerId } = req.body;
-    await User.removeFollower(userId, followerId);
-    res.status(200).json({ success: true, message: "Follower removed successfully" });
-  } catch (error) {
-    console.error("Error removing follower:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.json({ success: true, user: result });
+  } catch (err) {
+    next(err);
   }
 };

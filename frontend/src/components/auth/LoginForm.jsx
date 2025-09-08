@@ -45,7 +45,7 @@ export default function LoginForm({ onLogin, onToggleForm }) {
       if (onLogin) onLogin({ uid: user.uid, email: user.email, displayName: user.displayName });
 
       setSuccess("Login successful! Redirecting to your dashboard...");
-      setTimeout(() => navigate("/dashboard"), 1000);
+      setTimeout(() => navigate("/verify"), 1000);
     } catch (err) {
       console.error("Login error:", err);
 
@@ -113,7 +113,7 @@ export default function LoginForm({ onLogin, onToggleForm }) {
         });
 
       setSuccess("Google login successful! Redirecting to your dashboard...");
-      setTimeout(() => navigate("/dashboard"), 1000);
+      setTimeout(() => navigate("/verify"), 1000);
     } catch (err) {
       console.error("Google login failed:", err);
       setError("Google login failed. Please try again or use email and password login.");

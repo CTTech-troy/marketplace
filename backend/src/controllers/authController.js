@@ -1,6 +1,7 @@
 // backend/src/controllers/authController.js
 import { admin, auth, firestore } from "../config/firebase.js";
 import nodemailer from "nodemailer";
+import { createUserWithProfile } from "../models/users.js";
 
 // ----------------------- Nodemailer Setup -----------------------
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -73,9 +74,11 @@ export async function signup(req, res) {
       return res.status(400).json({ error: "All fields required" });
 
     try {
-      const existing = await auth.getUserByEmail(email);
+      await auth.getUserByEmail(email);
       return res.status(400).json({ error: "Email already registered" });
-    } catch {} // user not found, continue
+    } catch {
+      // user not found -> continue
+    }
 
     const newUser = await auth.createUser({
       email,
@@ -84,15 +87,21 @@ export async function signup(req, res) {
       emailVerified: false,
     });
 
-    await firestore.collection("users").doc(newUser.uid).set({
-      uid: newUser.uid,
-      firstName,
-      lastName,
-      email,
-      provider: "password",
-      verified: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    // ✅ Create users/{uid}, profiles/{uid}, wallets/{uid}, userStats/{uid}
+    await createUserWithProfile(newUser.uid, email, `${firstName} ${lastName}`, null);
+
+    // ✅ Merge instead of overwrite, preserving role, walletBalance, etc.
+    await firestore.collection("users").doc(newUser.uid).set(
+      {
+        firstName,
+        lastName,
+        email,
+        provider: "password",
+        verified: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true } // ✅ preserves fields created by createUserWithProfile
+    );
 
     const otp = await generateOTP(email);
     await sendMail({
@@ -129,7 +138,11 @@ export async function verifyOtp(req, res) {
     if (usersSnap.empty) return res.status(404).json({ error: "User not found" });
 
     const userDoc = usersSnap.docs[0];
-    await userDoc.ref.update({ verified: true, verifiedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await userDoc.ref.update({
+      verified: true,
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     await auth.updateUser(userDoc.id, { emailVerified: true });
     await firestore.collection(OTP_COLLECTION).doc(email).delete();
 
@@ -236,6 +249,7 @@ export async function login(req, res) {
 
     const userSnap = await firestore.collection("users").where("email", "==", email).limit(1).get();
     if (userSnap.empty) return res.status(404).json({ error: "User not found" });
+
     const userData = userSnap.docs[0].data();
     if (!userData.verified) return res.status(401).json({ error: "Email not verified" });
 
@@ -259,18 +273,25 @@ export async function googleAuth(req, res) {
     const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
-      await userRef.set({
-        uid: decoded.uid,
-        email: decoded.email,
-        firstName: decoded.name?.split(" ")[0] || "",
-        lastName: decoded.name?.split(" ").slice(1).join(" ") || "",
-        provider: "google",
-        verified: true,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Create minimal user doc (merged later)
+      await userRef.set(
+        {
+          uid: decoded.uid,
+          email: decoded.email,
+          firstName: decoded.name?.split(" ")[0] || "",
+          lastName: decoded.name?.split(" ").slice(1).join(" ") || "",
+          provider: "google",
+          verified: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      // ✅ Ensure profile, wallet, stats exist
+      await createUserWithProfile(decoded.uid, decoded.email, decoded.name ?? "", decoded.picture ?? null);
     }
 
-    res.json({ message: "Google signup/login successful", uid: decoded.uid });
+    res.json({ message: "Google signup/verify successful", uid: decoded.uid });
   } catch (err) {
     console.error("Google Auth Error:", err);
     res.status(401).json({ error: "Invalid Google token" });

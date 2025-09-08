@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./src/routes/authRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
-import walletRoutes from './src/routes/walletRoutes.js';
+import walletRoutes from "./src/routes/walletRoutes.js";
 
 dotenv.config();
 
@@ -16,17 +16,19 @@ const allowedOrigins = [
   process.env.FRONTEND_URL // for production deployment
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`❌ CORS blocked request from: ${origin}`);
-      callback(new Error("CORS not allowed for this origin: " + origin));
-    }
-  },
-  credentials: true, // required if you use cookies / auth tokens
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`❌ CORS blocked request from: ${origin}`);
+        callback(new Error("CORS not allowed for this origin: " + origin));
+      }
+    },
+    credentials: true, // required if you use cookies / auth tokens
+  })
+);
 
 app.use(express.json());
 
@@ -98,6 +100,16 @@ app.get("/", (req, res) => {
               <td class="border border-gray-300 px-4 py-2">/api/wallet/fund</td>
               <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
               <td class="border border-gray-300 px-4 py-2">Initialize wallet funding via Monnify</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet/verify</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Verify Monnify payment and credit wallet</td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="border border-gray-300 px-4 py-2">/api/wallet/credit</td>
+              <td class="border border-gray-300 px-4 py-2 font-medium text-blue-600">POST</td>
+              <td class="border border-gray-300 px-4 py-2">Manually credit wallet (admin only)</td>
             </tr>
             <tr class="hover:bg-gray-50">
               <td class="border border-gray-300 px-4 py-2">/api/wallet/debit</td>

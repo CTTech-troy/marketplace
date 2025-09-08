@@ -15,11 +15,12 @@ dist-ssr/
 
 # Environment files
 .env
-# backend/.env
+.env.*
+backend/.env.local
 
 # Sensitive local data
-
-# backend/src/ctstore.json
+CTTech.json
+src/config/CTTech.json
 
 # Editor directories and files
 .vscode/*

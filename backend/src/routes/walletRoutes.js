@@ -1,17 +1,21 @@
+// backend/src/routes/walletRoutes.js
 import express from "express";
-import * as walletController from "../controllers/walletController.js";
 import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
+import {
+  getWalletBalance,
+  creditWallet,
+  listTransactions,
+  initializeWalletFunding,
+  verifyMonnifyPayment,
+} from "../controllers/walletController.js";
 
 const router = express.Router();
 
-// Wallet endpoints
-router.get("/", verifyFirebaseToken, walletController.getWalletBalance);
-router.post("/credit", verifyFirebaseToken, walletController.creditWallet);
-router.post("/debit", verifyFirebaseToken, walletController.debitWallet);
-router.get("/transactions", verifyFirebaseToken, walletController.listTransactions);
-
-// Monnify
-router.post("/fund", verifyFirebaseToken, walletController.initializeWalletFunding);
-router.post("/verify", verifyFirebaseToken, walletController.verifyMonnifyPayment);
+// ✅ Each route now has a proper function as handler
+router.get("/", verifyFirebaseToken, getWalletBalance);
+router.post("/credit", verifyFirebaseToken, creditWallet);
+router.get("/transactions", verifyFirebaseToken, listTransactions);
+router.post("/fund", verifyFirebaseToken, initializeWalletFunding);
+router.post("/verify-payment", verifyFirebaseToken, verifyMonnifyPayment);
 
 export default router;
