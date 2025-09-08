@@ -1,73 +1,78 @@
-// profileModel.js
-import { firestore } from '../config/firebase.js';
+// src/models/User.js
+import { firestore, admin } from "../config/firebase.js";
 
-const profilesCollection = firestore.collection('profiles');
-const walletCollection = firestore.collection('wallet_transactions');
-const ordersCollection = firestore.collection('orders');
+const usersCol = firestore.collection("users");
+const profilesCol = firestore.collection("profiles");
+const walletsCol = firestore.collection("wallets");
+const userStatsCol = firestore.collection("userStats");
 
-// Create profile
-export const createProfile = async (profileData) => {
-  const profileRef = profilesCollection.doc(profileData.userId);
-  await profileRef.set({
-    username: profileData.username || '',
-    bio: profileData.bio || '',
-    locationName: profileData.locationName || '',
-    coordinates: profileData.coordinates || { lat: null, lng: null },
-    profilePic: profileData.profilePic || '',
-    isAnonymous: profileData.isAnonymous || false,
-    followersCount: 0,
-    followingCount: 0,
-    totalSales: 0,
-    walletBalance: 0,
-    posts: [],
-    stories: [],
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
-  return (await profileRef.get()).data();
-};
+export async function createUserWithProfile(uid, email, displayName = "", photoURL = null) {
+  const now = admin.firestore.FieldValue.serverTimestamp();
 
-// Get profile with wallet info
-export const getProfile = async (userId) => {
-  const profileDoc = await profilesCollection.doc(userId).get();
-  if (!profileDoc.exists) throw new Error('Profile not found');
+  const userRef = usersCol.doc(uid);
+  const profileRef = profilesCol.doc(uid);
+  const walletRef = walletsCol.doc(uid);
+  const statsRef = userStatsCol.doc(uid);
 
-  const profileData = profileDoc.data();
+  const [userSnap, profileSnap, walletSnap, statsSnap] = await Promise.all([
+    userRef.get(), profileRef.get(), walletRef.get(), statsRef.get()
+  ]);
 
-  // Calculate wallet balance
-  const walletSnapshot = await walletCollection.where('userId', '==', userId).get();
-  let walletBalance = 0;
-  walletSnapshot.forEach(doc => {
-    const { type, amount } = doc.data();
-    walletBalance += type === 'credit' ? amount : -amount;
-  });
+  const batch = firestore.batch();
 
-  // Calculate total sales from orders
-  const ordersSnapshot = await ordersCollection
-    .where('buyerId', '==', userId)
-    .where('status', '==', 'completed')
-    .get();
-  let totalSales = 0;
-  ordersSnapshot.forEach(doc => {
-    totalSales += doc.data().amount;
-  });
+  // Create user doc (no wallet balance here anymore)
+  if (!userSnap.exists) {
+    batch.set(userRef, {
+      uid,
+      email,
+      username: null,
+      role: "buyer",
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 
-  return {
-    ...profileData,
-    walletBalance,
-    totalSales
-  };
-};
+  // Create profile doc
+  if (!profileSnap.exists) {
+    batch.set(profileRef, {
+      displayName,
+      bio: "",
+      location: null,
+      profilePic: photoURL,
+      isAnonymous: false,
+      followers: 0,
+      following: 0,
+      amountMade: 0,
+      mediaCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 
-// Update profile
-export const updateProfile = async (userId, updateData) => {
-  const profileRef = profilesCollection.doc(userId);
-  await profileRef.update({
-    ...updateData,
-    updatedAt: new Date()
-  });
-  return await getProfile(userId); // Return updated profile with wallet info
-};
+  // Create wallet doc (balance stored here only)
+  if (!walletSnap.exists) {
+    batch.set(walletRef, {
+      uid,
+      balance: 0,
+      currency: "NGN",
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 
+  // Create stats doc
+  if (!statsSnap.exists) {
+    batch.set(statsRef, {
+      followers: 0,
+      following: 0,
+      totalSales: 0,
+      posted: 0,
+      updatedAt: now,
+    });
+  }
 
-export default { createProfile, getProfile, updateProfile };
+  await batch.commit();
+  return { uid, email };
+}
+
+export default createUserWithProfile;
