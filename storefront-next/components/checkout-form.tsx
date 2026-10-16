@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useCart } from "@/components/cart-provider";
 import { formatPrice } from "@/lib/utils";
@@ -12,6 +12,7 @@ export function CheckoutForm() {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,7 +22,7 @@ export function CheckoutForm() {
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
+        headers: { "content-type": "application/json", "idempotency-key": idempotencyKeyRef.current ?? (idempotencyKeyRef.current = crypto.randomUUID()) },
         body: JSON.stringify({
           customer: { name: name.trim(), email: email.trim(), phone: phone.trim() },
           items: items.map((item) => ({ slug: item.slug, quantity: item.quantity }))
@@ -29,7 +30,7 @@ export function CheckoutForm() {
       });
       const result = await response.json() as CheckoutResponse;
       if (!response.ok) throw new Error(result.error || result.message || "Checkout could not be completed.");
-      if (result.checkoutUrl) { clearCart(); window.location.assign(result.checkoutUrl); return; }
+      if (result.checkoutUrl) { window.location.assign(result.checkoutUrl); return; }
       if (result.orderReference) { clearCart(); setNotice(`Order ${result.orderReference} was created. Check your email for next steps.`); return; }
       throw new Error("The checkout service returned an unexpected response.");
     } catch (error) {
