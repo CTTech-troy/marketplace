@@ -163,17 +163,21 @@ export async function getCategories(): Promise<Category[]> {
       ? payload.categories
       : [];
 
-  return raw.filter((item): item is Category =>
-    Boolean(item) &&
-    typeof item.slug === "string" &&
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.slug) &&
-    typeof item.name === "string" &&
-    typeof item.description === "string"
-  ).map((item) => ({
-    slug: item.slug,
-    name: item.name,
-    description: item.description
-  }));
+  return raw.flatMap((item): Category[] => {
+    if (!item || typeof item !== "object") return [];
+    const candidate = item as Record<string, unknown>;
+    if (
+      typeof candidate.slug !== "string" ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(candidate.slug) ||
+      typeof candidate.name !== "string" ||
+      typeof candidate.description !== "string"
+    ) return [];
+    return [{
+      slug: candidate.slug,
+      name: candidate.name,
+      description: candidate.description
+    }];
+  });
 }
 
 export async function getCategory(slug: string): Promise<Category | undefined> {

@@ -30,7 +30,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pag
       products = demo.items.map((p) => ({ slug: p.slug, updatedAt: p.updatedAt }));
     }
 
-    const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${products.filter((p) => typeof p.slug === "string").map((product) => `  <url><loc>${xmlEscape(absoluteUrl(`/products/${product.slug}`))}</loc>${product.updatedAt ? `<lastmod>${xmlEscape(new Date(product.updatedAt).toISOString())}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>`;
+    const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${products.filter((p) => typeof p.slug === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug)).map((product) => {
+      let lastmod = "";
+      if (product.updatedAt) {
+        const timestamp = new Date(product.updatedAt);
+        if (!Number.isNaN(timestamp.getTime())) lastmod = `<lastmod>${xmlEscape(timestamp.toISOString())}</lastmod>`;
+      }
+      return `  <url><loc>${xmlEscape(absoluteUrl(`/products/${product.slug}`))}</loc>${lastmod}</url>`;
+    }).join("\n")}\n</urlset>`;
     return new NextResponse(body, { headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } });
   } catch {
     return new NextResponse("Product sitemap temporarily unavailable", { status: 503, headers: { "Cache-Control": "no-store" } });

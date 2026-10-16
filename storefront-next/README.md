@@ -44,7 +44,20 @@ Never prefix secrets with NEXT_PUBLIC_. Never put card numbers or payment-provid
 The catalogue adapter calls:
 
 - GET /store/products?page=1&pageSize=24&q=&category=&sort=&minPrice=&maxPrice=
-- GET /store/products/:slug\n- GET /store/categories
+- GET /store/products/:slug
+- GET /store/categories
+
+Category response (use either wrapper name):
+
+~~~json
+{
+  "items": [
+    { "slug": "accessories", "name": "Accessories", "description": "Useful everyday objects." }
+  ]
+}
+~~~
+
+A category slug must be lowercase kebab-case and stable. Use the same canonical slug in category links, product references, structured data and sitemap URLs.
 
 List response:
 
