@@ -38,7 +38,7 @@ export type ProductPage = {
   totalPages: number;
 };
 
-export const categories: Category[] = [
+const demoCategories: Category[] = [
   { slug: "apparel", name: "Apparel", description: "Everyday essentials with considered materials and clean design." },
   { slug: "accessories", name: "Accessories", description: "Small details and useful pieces for everyday life." },
   { slug: "home", name: "Home and Living", description: "Thoughtful objects for calmer, more useful spaces." },
@@ -147,10 +147,36 @@ export function getDemoCatalogCount(): number {
   return demoProducts.length;
 }
 
-export function getCategory(slug: string): Category | undefined {
-  return categories.find((item) => item.slug === slug);
+export async function getCategories(): Promise<Category[]> {
+  const api = getCatalogApi();
+  if (!api) return demoCategories;
+
+  const response = await fetch(`${api}/store/categories`, {
+    next: { revalidate: 300, tags: ["categories"] }
+  });
+  if (!response.ok) throw new Error(`Category API returned HTTP ${response.status}`);
+
+  const payload = await response.json() as { items?: unknown; categories?: unknown };
+  const raw = Array.isArray(payload.items)
+    ? payload.items
+    : Array.isArray(payload.categories)
+      ? payload.categories
+      : [];
+
+  return raw.filter((item): item is Category =>
+    Boolean(item) &&
+    typeof item.slug === "string" &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.slug) &&
+    typeof item.name === "string" &&
+    typeof item.description === "string"
+  ).map((item) => ({
+    slug: item.slug,
+    name: item.name,
+    description: item.description
+  }));
 }
 
-export function getCategories(): Category[] {
-  return categories;
+export async function getCategory(slug: string): Promise<Category | undefined> {
+  const list = await getCategories();
+  return list.find((item) => item.slug === slug);
 }

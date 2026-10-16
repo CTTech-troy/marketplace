@@ -44,7 +44,7 @@ Never prefix secrets with NEXT_PUBLIC_. Never put card numbers or payment-provid
 The catalogue adapter calls:
 
 - GET /store/products?page=1&pageSize=24&q=&category=&sort=&minPrice=&maxPrice=
-- GET /store/products/:slug
+- GET /store/products/:slug\n- GET /store/categories
 
 List response:
 

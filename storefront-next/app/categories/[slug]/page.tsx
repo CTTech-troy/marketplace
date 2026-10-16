@@ -7,13 +7,14 @@ import { absoluteUrl, canIndexSite } from "@/lib/seo";
 
 type RouteProps = { params: Promise<{ slug: string }> };
 
-export function generateStaticParams() {
-  return getCategories().map((category) => ({ slug: category.slug }));
+export async function generateStaticParams() {
+  const list = await getCategories();
+  return list.map((category) => ({ slug: category.slug }));
 }
 
 export async function generateMetadata({ params }: RouteProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await getCategory(slug);
   if (!category) return { title: "Collection not found", robots: { index: false, follow: true } };
   return {
     title: category.name,
@@ -28,7 +29,7 @@ export const revalidate = 300;
 
 export default async function CategoryPage({ params }: RouteProps) {
   const { slug } = await params;
-  const category = getCategory(slug);
+  const category = await getCategory(slug);
   if (!category) notFound();
   const productPage = await listProducts({ category: slug, page: 1, pageSize: 24, sort: "newest" });
   const jsonLd = {

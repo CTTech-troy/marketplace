@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCategories, getDemoCatalogCount } from "@/lib/catalog";
+import { getDemoCatalogCount } from "@/lib/catalog";
 import { absoluteUrl } from "@/lib/seo";
 
 export const revalidate = 3600;

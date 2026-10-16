@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CartCount } from "@/components/cart-count";
-import { categories } from "@/lib/catalog";
-export function SiteHeader() {
+import { getCategories } from "@/lib/catalog";
+export async function SiteHeader() {
+  const categories = await getCategories();
   return <>
     <div className="announcement">Thoughtful everyday goods. Straightforward shopping.</div>
     <header className="site-header"><div className="header-inner">

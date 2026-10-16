@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listProducts, categories } from "@/lib/catalog";
+import { listProducts, getCategories } from "@/lib/catalog";
 import { ProductGrid } from "@/components/product-grid";
 import { absoluteUrl } from "@/lib/seo";
 
@@ -8,6 +8,7 @@ export const revalidate = 60;
 export default async function HomePage() {
   const featured = await listProducts({ page: 1, pageSize: 8, sort: "newest" });
   const accessories = await listProducts({ page: 1, pageSize: 3, category: "accessories" });
+  const categoryList = await getCategories();
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -41,7 +42,7 @@ export default async function HomePage() {
     </section>
     <section className="section-block">
       <div className="section-heading"><div><p className="eyebrow">FIND YOUR EVERYDAY</p><h2>Shop by collection</h2></div><Link href="/search" className="text-link">Browse all products ↗</Link></div>
-      <div className="category-grid">{categories.map((category, index) => <Link href={`/categories/${category.slug}`} className={`category-tile tile-${index + 1}`} key={category.slug}><span className="category-index">0{index + 1}</span><span className="category-tile-bottom"><strong>{category.name}</strong><span>Explore collection ↗</span></span></Link>)}</div>
+      <div className="category-grid">{categoryList.map((category, index) => <Link href={`/categories/${category.slug}`} className={`category-tile tile-${index + 1}`} key={category.slug}><span className="category-index">0{index + 1}</span><span className="category-tile-bottom"><strong>{category.name}</strong><span>Explore collection ↗</span></span></Link>)}</div>
     </section>
     <section className="section-block product-section">
       <div className="section-heading"><div><p className="eyebrow">THE CURRENT EDIT</p><h2>Everyday favourites</h2><p className="section-intro">Good design earns its place by being useful.</p></div><Link href="/search?sort=newest" className="text-link">See everything ↗</Link></div>

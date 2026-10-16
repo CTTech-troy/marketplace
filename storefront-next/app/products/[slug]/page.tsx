@@ -28,7 +28,7 @@ export default async function ProductPage({ params }: RouteProps) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const category = getCategory(product.category);
+  const category = await getCategory(product.category);
   const productUrl = absoluteUrl(`/products/${product.slug}`);
   const productJsonLd = {
     "@context": "https://schema.org", "@type": "Product",
